@@ -85,6 +85,7 @@ void RCOutput::init()
     for (uint8_t i = 0; i < MAX_CHANNELS; ++i) {
         auto unit = units[i/6];
         auto signal = signals[i % 6];
+
         auto timer = timers[i/2];
 
         //Save struct infos
@@ -95,6 +96,7 @@ void RCOutput::init()
         out.io_signal = signal;
         out.op = operators[i%2];
         out.chan = i;
+        out.current_mode = MODE_PWM_NORMAL;
 
         //Setup gpio
         mcpwm_gpio_init(unit, signal, outputs_pins[i]);
@@ -123,7 +125,11 @@ void RCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
     for (uint8_t i = 0; i < MAX_CHANNELS; i++) {
         if (chmask & 1 << i) {
             pwm_out &out = pwm_group_list[i];
-            mcpwm_set_frequency(out.unit_num, out.timer_num, freq_hz);
+            uint32_t _freq = freq_hz;
+            if(out.current_mode == MODE_PWM_BRUSHED){
+                _freq *= 20;
+            }
+            mcpwm_set_frequency(out.unit_num, out.timer_num, _freq);
         }
     }
 }
@@ -346,4 +352,23 @@ void RCOutput::safety_update(void)
 void RCOutput::set_failsafe_pwm(uint32_t chmask, uint16_t period_us)
 {
     //RIP (not the pointer)
+}
+
+/*
+  set motor pwm mode
+*/
+void RCOutput::set_output_mode(uint32_t chmask, const enum output_mode mode)
+{
+    for(int i=0;i<MAX_CHANNELS;i++){
+        if(chmask & (1U<<pwm_group_list[i].chan)){
+            for(int j=0;j<MAX_CHANNELS;j++){
+                // if same timer, set mode
+                mcpwm_timer_t _timer = pwm_group_list[i].timer_num;
+                if(_timer == pwm_group_list[j].timer_num){
+                    pwm_group_list[j].current_mode = mode;
+                }
+            }
+        }
+
+    }
 }

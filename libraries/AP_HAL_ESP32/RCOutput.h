@@ -91,6 +91,11 @@ public:
         safety_mask = mask;
     }
 
+    /*
+      set motor pwm mode
+      */
+    void set_output_mode(uint32_t mask, const enum output_mode mode) override;
+
 
     void timer_tick() override;
 
@@ -103,6 +108,7 @@ private:
         mcpwm_io_signals_t io_signal;
         mcpwm_operator_t op;
         uint8_t chan;
+        output_mode current_mode;
     };
 
 
