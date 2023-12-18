@@ -367,7 +367,7 @@ void RCOutput::set_freq_group(pwm_group &group)
         return;
     }
 
-    uint16_t freq_set = group.rc_frequency;
+    uint32_t freq_set = group.rc_frequency;
     uint32_t old_clock = group.pwm_cfg.frequency;
     uint32_t old_period = group.pwm_cfg.period;
 
@@ -400,6 +400,7 @@ void RCOutput::set_freq_group(pwm_group &group)
     } else {
         group.pwm_cfg.period = group.pwm_cfg.frequency/freq_set;
     }
+
 
     bool force_reconfig = false;
     for (uint8_t j=0; j<4; j++) {
@@ -470,9 +471,12 @@ void RCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
     for (auto &group : pwm_group_list) {
         // greater than 400 doesn't give enough room at higher periods for
         // the down pulse. This still allows for high rate with oneshot and dshot.
-        uint16_t group_freq = freq_hz;
+        uint32_t group_freq = freq_hz;
         if (group_freq > 400 && group.current_mode != MODE_PWM_BRUSHED) {
             group_freq = 400;
+        }
+        if (group.current_mode == MODE_PWM_BRUSHED) {
+            group_freq *= 20;
         }
         if ((group.ch_mask & chmask) != 0) {
             group.rc_frequency = group_freq;
