@@ -118,6 +118,7 @@ void RCOutput::init()
 
 void RCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
 {
+    esp_err_t err;
     if (!_initialized) {
         return;
     }
@@ -127,9 +128,13 @@ void RCOutput::set_freq(uint32_t chmask, uint16_t freq_hz)
             pwm_out &out = pwm_group_list[i];
             uint32_t _freq = freq_hz;
             if(out.current_mode == MODE_PWM_BRUSHED){
-                _freq *= 20;
+                _freq = 10*1000; // 10KHz
             }
-            mcpwm_set_frequency(out.unit_num, out.timer_num, _freq);
+            err = mcpwm_set_frequency(out.unit_num, out.timer_num, _freq);
+            if (err != ESP_OK) {
+                printf("mcpwm_set_frequency failed on channel %d\n", i);
+                while (1);
+            }
         }
     }
 }
@@ -223,6 +228,11 @@ void RCOutput::push()
     for (uint8_t i = 0; i < MAX_CHANNELS; i++) {
         if ((1U<<i) & _pending_mask) {
             uint32_t period_us = _pending[i];
+            /*
+            if( pwm_group_list[i].current_mode == MODE_PWM_BRUSHED){
+                period_us = 2;
+            }
+            */
 
             // If safety is on and safety mask not bypassing
             if (safety_on && !(safety_mask & (1U<<(i)))) {
@@ -254,7 +264,12 @@ void RCOutput::write_int(uint8_t chan, uint16_t period_us)
     }
 
     pwm_out &out = pwm_group_list[chan];
-    mcpwm_set_duty_in_us(out.unit_num, out.timer_num, out.op, period_us);
+    if(pwm_group_list[chan].current_mode == MODE_PWM_BRUSHED){
+        //float _duty = (period_us - _esc_pwm_min) / (_esc_pwm_max - _esc_pwm_min);
+        mcpwm_set_duty(out.unit_num, out.timer_num, out.op, 0.5);
+    }else{
+        mcpwm_set_duty_in_us(out.unit_num, out.timer_num, out.op, period_us);
+    }
 }
 
 /*

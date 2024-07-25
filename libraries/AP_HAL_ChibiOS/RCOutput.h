@@ -89,6 +89,7 @@ public:
      */
     void set_default_rate(uint16_t rate_hz) override;
 
+    /*
       timer push (for oneshot min rate)
      */
     void timer_tick(uint64_t last_run_us);
